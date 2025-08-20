@@ -27,7 +27,7 @@ from typing import (
 )
 
 from pydantic import Field, field_validator
-from requests import HTTPError, Session
+from requests import HTTPError, Session, Response
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt
 
 from pyiceberg import __version__
@@ -234,9 +234,17 @@ class RestCatalog(Catalog):
         self._fetch_config()
         self._session = self._create_session()
 
+    def _debug_response(self, r: Response, **kwargs) -> Response:
+        from requests_toolbelt.utils import dump
+        print(dump.dump_all(r).decode('utf-8'))
+        return r
+
     def _create_session(self) -> Session:
         """Create a request session with provided catalog configuration."""
         session = Session()
+        session.hooks = {
+            'response': self._debug_response,
+        }
 
         # Sets the client side and server side SSL cert verification, if provided as properties.
         if ssl_config := self.properties.get(SSL):
